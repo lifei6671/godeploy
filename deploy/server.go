@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var DefaultConfigs = make([]DeployConfig,0);
+var DefaultConfigs = make(map[string]DeployConfig,0);
 
 type DeployServer struct {
 	Port int //监听的端口号
@@ -22,6 +22,10 @@ type DeployConfig struct{
 	RepositoryName string  //git 仓库名称
 	LocalDir	string //本地目录地址
 	Token 		string //认证Token
+	BeforeScript	string //执行脚本
+	AfterScript	string	//拉取之后执行的脚本
+	LocalBranch	string //本地分支名称
+	EventType	string //监听的事件类型
 }
 
 func (server DeployServer) Start()  {
@@ -45,32 +49,93 @@ func execute(w http.ResponseWriter,r *http.Request)  {
 		fmt.Println("post error:", err.Error());
 	}
 	fmt.Println(path)
-
+	//读取请求内容
 	postBody := bytes.NewBuffer(content).String();
 
-	jsonObject := gojson.Json(postBody);
 
-	io.WriteString(w,bytes.NewBuffer(content).String());
-
+	//如果是Gitlab
 	if strings.EqualFold(path,"/gitlab") {
 
 		event := r.Header.Get("X-Gitlab-Event");
 		token := r.Header.Get("X-Gitlab-Token");
 
-		fmt.Println(token);
+		remoteBranch := gojson.Json(postBody).Get("project").Get("default_branch").Tostring();
 
-		if strings.EqualFold(event,"Push Hook"){
-			fmt.Println(event);
-			fmt.Println(jsonObject.Get("project"))
+		projectName := gojson.Json(postBody).Get("project").Get("name").Tostring();
+
+		if section,ok := DefaultConfigs[projectName];ok {
+
+			if !strings.EqualFold(token,section.Token) {
+				fmt.Println("Token error");
+				return ;
+			}
+
+			if err != nil {
+
+				fmt.Println("exec cmmand error:",err.Error())
+			}
+
+			return ;
+			//如果是Push事件
+			if strings.EqualFold(event, "Push Hook") && strings.EqualFold(section.EventType,"push") {
+
+				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
+				if err != nil {
+					fmt.Println("exec cmmand error:",err.Error())
+				}
+
+			} else if strings.EqualFold(event, "Tag Push Hook") && strings.EqualFold(section.EventType,"tag_push") {
+				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
+				if err != nil {
+					fmt.Println("exec cmmand error:",err.Error())
+				}
+			}
 		}
 		return ;
 	}
+	//如果是Github
 	if strings.EqualFold(path,"/github") {
+
+		event := r.Header.Get("X-GitHub-Event");
+		token := r.Header.Get("X-Hub-Signature");
+
+		remoteBranch := gojson.Json(postBody).Get("repository").Get("default_branch").Tostring();
+
+		projectName := gojson.Json(postBody).Get("repository").Get("name").Tostring();
+
+		if section,ok := DefaultConfigs[projectName];ok {
+
+			if !strings.EqualFold(token,section.Token) {
+				fmt.Println("Token error");
+				return ;
+			}
+
+			if err != nil {
+
+				fmt.Println("exec cmmand error:",err.Error())
+			}
+
+			return ;
+			//如果是Push事件
+			if strings.EqualFold(event, "push") && strings.EqualFold(section.EventType,"push") {
+				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
+				if err != nil {
+					fmt.Println("exec cmmand error:",err.Error())
+				}
+
+			} else if strings.EqualFold(event, "create") && strings.EqualFold(section.EventType,"tag_push") {
+				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
+				if err != nil {
+					fmt.Println("exec cmmand error:",err.Error())
+				}
+			}
+		}
 
 		return ;
 	}
 	io.WriteString(w,"No supported");
 }
+
 
 func init(){
 	configFile,err := goconfig.LoadConfigFile("./conf.ini");
@@ -78,16 +143,22 @@ func init(){
 		fmt.Println("Config error: ",err.Error())
 	}
 
-	configs := make([]DeployConfig,0);
+	configs := make(map[string]DeployConfig,0);
 
 	configSections := configFile.GetSectionList();
 
 	if len(configSections) > 0 {
 		for _,section := range configSections {
 			config := DeployConfig{
-				RepositoryName : configFile.MustValue(section, "RepositoryName"),
+				RepositoryName 	: configFile.MustValue(section, "RepositoryName"),
+				LocalDir	: configFile.MustValue(section,"LocalDir"),
+				Token		: configFile.MustValue(section,"Token"),
+				AfterScript	: configFile.MustValue(section,"AfterScript",""),
+				BeforeScript	: configFile.MustValue(section,"BeforeScript",""),
+				LocalBranch	: configFile.MustValue(section,"LocalBranch","origin"),
+				EventType	: configFile.MustValue(section,"EventType","push"),
 			}
-			configs = append(configs, config)
+			configs[section] = config
 		}
 	}
 	DefaultConfigs = configs;

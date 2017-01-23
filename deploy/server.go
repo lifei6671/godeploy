@@ -138,7 +138,7 @@ func githubFunc(w http.ResponseWriter,r *http.Request)  {
 
 func Command(config DeployConfig, remoteBranch string)  {
 	if config.BeforeScript != "" {
-		err := ScirptCmannd(config.LocalDir,config.BeforeScript);
+		err := ScirptComannd(config.LocalDir,config.BeforeScript);
 		if err != nil {
 			fmt.Println("before script error:",err.Error());
 			return ;
@@ -150,7 +150,7 @@ func Command(config DeployConfig, remoteBranch string)  {
 		return ;
 	}
 	if config.AfterScript != "" {
-		err := ScirptCmannd(config.LocalDir,config.AfterScript);
+		err := ScirptComannd(config.LocalDir,config.AfterScript);
 		if err != nil {
 			fmt.Println("after script error:",err.Error());
 			return ;

@@ -54,7 +54,7 @@ func GitCheckoutCommand(dir string, remoteBranch string) (error) {
 	return  nil;
 }
 
-func ScirptCmannd(dir string,path string) (error) {
+func ScirptComannd(dir string,path string) (error) {
 	cmd := exec.Command("cmd","/C",path);
 	cmd.Dir = dir;
 

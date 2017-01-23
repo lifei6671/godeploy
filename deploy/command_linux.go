@@ -54,6 +54,21 @@ func GitCheckoutCommand(dir string, remoteBranch string) (error) {
 	return  nil;
 }
 
+func ScirptComannd(dir string,path string) (error) {
+	cmd := exec.Command("/bin/sh","-c",path);
+	cmd.Dir = dir;
+
+	output,err := cmd.Output();
+
+	if err != nil {
+		return  err;
+	}
+	fmt.Println(bytes.NewBuffer(output).String());
+
+	cmd.Wait();
+	return  nil;
+}
+
 func GitCommand(dir string,remoteBranch string,localBranch string) (error) {
 
 	err := GitResetCommand(dir,remoteBranch,localBranch);

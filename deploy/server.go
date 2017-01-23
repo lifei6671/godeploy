@@ -31,8 +31,8 @@ type DeployConfig struct{
 func (server DeployServer) Start()  {
 
 	fmt.Println("service is starting ...")
-	http.HandleFunc("/github",execute);
-	http.HandleFunc("/gitlab",execute);
+	http.HandleFunc("/github",githubFunc);
+	http.HandleFunc("/gitlab",gitlabFunc);
 
 	err := http.ListenAndServe(":" + strconv.Itoa(server.Port),nil);
 	if(err != nil){
@@ -41,7 +41,8 @@ func (server DeployServer) Start()  {
 	fmt.Println("service is started.");
 }
 
-func execute(w http.ResponseWriter,r *http.Request)  {
+//处理 gitlab 的请求
+func gitlabFunc(w http.ResponseWriter,r *http.Request){
 	path := r.URL.Path
 	//request_type := path[strings.LastIndex(path, "."):]
 	content,err := ioutil.ReadAll(r.Body);
@@ -70,29 +71,33 @@ func execute(w http.ResponseWriter,r *http.Request)  {
 				return ;
 			}
 
-			if err != nil {
-
-				fmt.Println("exec cmmand error:",err.Error())
-			}
-
-			return ;
 			//如果是Push事件
 			if strings.EqualFold(event, "Push Hook") && strings.EqualFold(section.EventType,"push") {
-
-				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
-				if err != nil {
-					fmt.Println("exec cmmand error:",err.Error())
-				}
+				Command(section,remoteBranch);
 
 			} else if strings.EqualFold(event, "Tag Push Hook") && strings.EqualFold(section.EventType,"tag_push") {
-				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
-				if err != nil {
-					fmt.Println("exec cmmand error:",err.Error())
-				}
+				Command(section,remoteBranch);
 			}
 		}
 		return ;
 	}
+	fmt.Println("No supported request");
+
+	io.WriteString(w,"No supported request");
+}
+
+//处理 github 的请求
+func githubFunc(w http.ResponseWriter,r *http.Request)  {
+	path := r.URL.Path
+	//request_type := path[strings.LastIndex(path, "."):]
+	content,err := ioutil.ReadAll(r.Body);
+	if err != nil{
+		fmt.Println("post error:", err.Error());
+	}
+	fmt.Println(path)
+	//读取请求内容
+	postBody := bytes.NewBuffer(content).String();
+
 	//如果是Github
 	if strings.EqualFold(path,"/github") {
 
@@ -118,24 +123,40 @@ func execute(w http.ResponseWriter,r *http.Request)  {
 			return ;
 			//如果是Push事件
 			if strings.EqualFold(event, "push") && strings.EqualFold(section.EventType,"push") {
-				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
-				if err != nil {
-					fmt.Println("exec cmmand error:",err.Error())
-				}
+				Command(section,remoteBranch);
 
 			} else if strings.EqualFold(event, "create") && strings.EqualFold(section.EventType,"tag_push") {
-				err := GitCommand(section.LocalDir ,remoteBranch,section.LocalBranch);
-				if err != nil {
-					fmt.Println("exec cmmand error:",err.Error())
-				}
+				Command(section,remoteBranch);
 			}
 		}
 
 		return ;
 	}
+	fmt.Println("No supported request");
 	io.WriteString(w,"No supported");
 }
 
+func Command(config DeployConfig, remoteBranch string)  {
+	if config.BeforeScript != "" {
+		err := ScirptCmannd(config.LocalDir,config.BeforeScript);
+		if err != nil {
+			fmt.Println("before script error:",err.Error());
+			return ;
+		}
+	}
+	err := GitCommand(config.LocalDir ,remoteBranch,config.LocalBranch);
+	if err != nil {
+		fmt.Println("exec cmmand error:",err.Error());
+		return ;
+	}
+	if config.AfterScript != "" {
+		err := ScirptCmannd(config.LocalDir,config.AfterScript);
+		if err != nil {
+			fmt.Println("after script error:",err.Error());
+			return ;
+		}
+	}
+}
 
 func init(){
 	configFile,err := goconfig.LoadConfigFile("./conf.ini");

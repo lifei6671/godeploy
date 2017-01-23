@@ -5,22 +5,27 @@ import (
 import (
 	"godeploy/deploy"
 	"fmt"
+	"flag"
 )
 
 func main()  {
 
-	//config := deploy.DeployServer{
-	//	Port:8080,
-	//}
-	//
-	//config.Start();
-	//
-	//
-	//fmt.Println(config)
+	port := flag.Int("port", 8080, "Listen local port.")
+	flag.Parse();
+	fmt.Println(*port);
 
-	err := deploy.ScirptCmannd("E:\\go\\backshop","E:\\Go\\src\\godeploy\\scripts\\backshop.bat");
-
-	if err != nil{
-		fmt.Println(err)
+	config := deploy.DeployServer{
+		Port	: *port,
 	}
+
+	config.Start();
+
+
+	fmt.Println(config)
+	//
+	//err := deploy.ScirptCmannd("E:\\go\\backshop","E:\\Go\\src\\godeploy\\scripts\\backshop.bat");
+	//
+	//if err != nil{
+	//	fmt.Println(err)
+	//}
 }

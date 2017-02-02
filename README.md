@@ -58,3 +58,8 @@ Gitlab路径类似 `http://192.168.4.104:8080/gitlab`
 
 Github 路径：`http://192.168.4.104:8080/github`
 
+例如：你的ip地址是192.168.0.2，端口号是8001，则：
+
+Gitlab的Hook路径就是：`http://192.168.0.2:8001/gitlab`
+
+Github的Hook路径就是：`http://192.168.0.2:8001/github`
